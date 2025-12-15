@@ -1,17 +1,21 @@
+import re
 from pydantic import BaseModel
 import qdrant_client
 from llama_index.vector_stores.qdrant import QdrantVectorStore
-from llama_index.embeddings import OpenAIEmbedding
-from llama_index.llms import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.openai import OpenAI
 from llama_index.core.schema import Document
-from llama_index import (
+from llama_index.core import (
     VectorStoreIndex,
     ServiceContext,
 )
 from dataclasses import dataclass
 import os
 
-key = os.environ['OPENAI_API_KEY']
+from pypdf import PdfReader
+
+key = "OPENAI_API_KEY"  # os.environ['OPENAI_API_KEY']
+HEADING_PATTERN = re.compile(r"^\d+\.\d*\s*(?:[A-Za-z]+\s*){1,5}$", re.MULTILINE)
 
 @dataclass
 class Input:
@@ -54,6 +58,39 @@ class DocumentService:
         return docs
 
      """
+    def create_documents(self, file_path: str) -> list[Document]:
+        reader = PdfReader(file_path)
+        docs: list[Document] = []
+        text = ""
+        
+        # Extract text from all pages
+        for i, page in enumerate(reader.pages):
+            # text = page.extract_text(space_width=1) or ""  # NOTE: never got it properly identify whitespaces
+            text += page.extract_text(extraction_mode="layout")
+            # print(text)  # DEBUG
+
+        # Split text into sections
+        text_sections = HEADING_PATTERN.split(text)
+        section_headings = HEADING_PATTERN.findall(text)
+
+        # NOTE no numbered headings, so extract independently
+        # TODO smarter regex (or another method) for title extraction
+        docs.append(Document(
+            metadata={"Section": "Title"},
+            text=text_sections[0]
+        ))
+
+        # TODO additional sanity checks that we extracted all the text correctly
+        assert len(text_sections) == len(section_headings) + 1, "Number of sections and headings do not match"
+
+        for section, heading in zip(text_sections[1:], section_headings):
+            doc = Document(
+                metadata={"Section": heading},
+                text=section
+            )
+            docs.append(doc)
+
+        return docs
 
 class QdrantService:
     def __init__(self, k: int = 2):
@@ -109,13 +146,20 @@ class QdrantService:
 if __name__ == "__main__":
     # Example workflow
     doc_serivce = DocumentService() # implemented
-    docs = doc_serivce.create_documents() # NOT implemented
 
-    index = QdrantService() # implemented
-    index.connect() # implemented
-    index.load() # implemented
+    laws_pdf = "docs/laws.pdf"
+    docs = doc_serivce.create_documents(laws_pdf) # WIP
 
-    index.query("what happens if I steal?") # NOT implemented
+    print(f"Created {len(docs)} documents from {laws_pdf}")
+    for d in docs:
+        print(d.metadata)
+        print(d.text)
+
+    # index = QdrantService() # implemented
+    # index.connect() # implemented
+    # index.load() # implemented
+
+    # index.query("what happens if I steal?") # NOT implemented
 
 
 
