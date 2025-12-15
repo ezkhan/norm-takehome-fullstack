@@ -65,16 +65,21 @@ class DocumentService:
         
         # Extract text from all pages
         for i, page in enumerate(reader.pages):
-            # text = page.extract_text(space_width=1) or ""  # NOTE: never got it properly identify whitespaces
+            # NOTE: never got it properly identify whitespaces
+            # text = page.extract_text(space_width=1)
+
+            # NOTE `extract_text` docs note:Do not rely on the order of text coming out of this function, as it will change if this function is made more sophisticated.
+            # TODO: consider parsing per page/doc to avoid ordering misalignments (skipped for now, none observed)
             text += page.extract_text(extraction_mode="layout")
+
             # print(text)  # DEBUG
 
         # Split text into sections
         text_sections = HEADING_PATTERN.split(text)
         section_headings = HEADING_PATTERN.findall(text)
 
-        # NOTE no numbered headings, so extract independently
-        # TODO smarter regex (or another method) for title extraction
+        # NOTE no numbered heading for title, so extract independently
+        # TODO smarter regex (or another method) for unified title/section extraction
         docs.append(Document(
             metadata={"Section": "Title"},
             text=text_sections[0]
