@@ -1,4 +1,6 @@
+import os
 import re
+# import openai
 from pydantic import BaseModel
 import qdrant_client
 from llama_index.vector_stores.qdrant import QdrantVectorStore
@@ -7,14 +9,22 @@ from llama_index.llms.openai import OpenAI
 from llama_index.core.schema import Document
 from llama_index.core import (
     VectorStoreIndex,
-    ServiceContext,
+    # ServiceContext,  # NOTE DEPRECATED
+    Settings,
 )
+from llama_index.core.query_engine import CitationQueryEngine
 from dataclasses import dataclass
-import os
+
 
 from pypdf import PdfReader
 
-key = "OPENAI_API_KEY"  # os.environ['OPENAI_API_KEY']
+# key = os.environ['OPENAI_API_KEY']
+# openai.api_key = os.environ["OPENAI_API_KEY"]
+os.environ["OPENAI_API_KEY"] = "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"
+OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+
+
+
 HEADING_PATTERN = re.compile(r"^\d+\.\d*\s*(?:[A-Za-z]+\s*){1,5}$", re.MULTILINE)
 
 @dataclass
@@ -107,14 +117,22 @@ class QdrantService:
                 
         vstore = QdrantVectorStore(client=client, collection_name='temp')
 
-        service_context = ServiceContext.from_defaults(
-            embed_model=OpenAIEmbedding(),
-            llm=OpenAI(api_key=key, model="gpt-4")
-            )
+        # NOTE DEPRECATED
+        # service_context = ServiceContext.from_defaults(
+        #     embed_model=OpenAIEmbedding(),
+        #     llm=OpenAI(api_key=key, model="gpt-4")
+        #     )
+
+        Settings.llm = OpenAI(api_key=OPENAI_API_KEY, model="gpt-5-nano")
+        Settings.embed_model = OpenAIEmbedding(api_key=OPENAI_API_KEY, embed_batch_size=5)
+        # Settings.node_parser = SentenceWindowNodeParser(window_size=100)
+        Settings.num_output = 256
+        # Settings.context_window = 10
+        Settings.chunk_size = 512
 
         self.index = VectorStoreIndex.from_vector_store(
             vector_store=vstore, 
-            service_context=service_context
+            # service_context=service_context,
             )
 
     def load(self, docs = list[Document]):
@@ -146,6 +164,40 @@ class QdrantService:
         return output
 
         """
+        # # hardcode for now
+        # return Output(
+        #     query=query_str,
+        #     response=str("Death by hanging"),
+        #     citations=[],
+        # )
+
+        if self.index is None:
+            raise RuntimeError("Vector index not initialized. Call connect() first.")
+
+        # similarity_top_k ensures we honor the configured self.k
+        # query_engine = self.index.as_query_engine(similarity_top_k=self.k)
+        query_engine = CitationQueryEngine.from_args(
+            self.index,
+            similarity_top_k=self.k,
+            citation_chunk_size=100, # controls the granularity of source chunks
+        )
+
+        response = query_engine.query(query_str)
+
+        # Collect source nodes as citations with their section metadata
+        citations: list[Citation] = []
+        for node_with_score in response.source_nodes:
+            node = node_with_score.node
+            source = node.metadata.get("Section", "Unknown Source")
+            citations.append(Citation(source=source, text=node.get_content()))
+
+        output = Output(
+            query=query_str,
+            response=str(response),
+            citations=citations,
+        )
+
+        return output
        
 
 if __name__ == "__main__":
@@ -155,18 +207,16 @@ if __name__ == "__main__":
     laws_pdf = "docs/laws.pdf"
     docs = doc_serivce.create_documents(laws_pdf) # WIP
 
-    print(f"Created {len(docs)} documents from {laws_pdf}")
-    for d in docs:
-        print(d.metadata)
-        print(d.text)
+    # DEBUG
+    # print(f"Created {len(docs)} documents from {laws_pdf}")
+    # for d in docs:
+    #     print(d.metadata)
+    #     print(d.text)
 
-    # index = QdrantService() # implemented
-    # index.connect() # implemented
-    # index.load() # implemented
+    index = QdrantService() # implemented
+    index.connect() # implemented
+    index.load(docs) # implemented
+    
 
-    # index.query("what happens if I steal?") # NOT implemented
-
-
-
-
-
+    result = index.query("what happens if I steal?") # NOT implemented
+    print(result)
