@@ -1,6 +1,6 @@
-import uvicorn
+# import uvicorn
 from fastapi import FastAPI, Query
-from utils import Output, QdrantService, DocumentService
+from app.utils import Output, QdrantService, DocumentService
 
 app = FastAPI()
 
@@ -37,5 +37,5 @@ def query_laws(inquiry: str):
     return result
 
 
-if __name__ == "__main__":
-    uvicorn.run(app=app, host="127.0.0.1", port=8000, reload=True)
+# if __name__ == "__main__":
+#     uvicorn.run(app=my_app, host="127.0.0.1", port=8000, reload=True)
