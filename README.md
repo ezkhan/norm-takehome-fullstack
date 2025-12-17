@@ -7,3 +7,9 @@ This codebase contains a list of laws (`docs/laws.pdf`) taken from the fictional
 ## Client Repository 
 
 In the `frontend` folder you'll find a light NextJS app with it's own README including instructions to run. Your task here is to build a minimal client experience that utilizes the service build in part 1.
+
+
+
+To run:
+BE: `python -m uvicorn app.main:app --host localhost --port 8000 --reload`
+FE: `cd frontend/ && npm run dev`
