@@ -3,9 +3,20 @@
 import { useState } from 'react';
 import HeaderNav from '@/components/HeaderNav';
 
+interface Citation {
+  source: string;
+  text: string;
+}
+
+interface QueryResponse {
+  query: string;
+  response: string;
+  citations: Citation[];
+}
+
 export default function Page() {
   const [query, setQuery] = useState('');
-  const [answer, setAnswer] = useState<string | null>(null);
+  const [response, setResponse] = useState<QueryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,7 +26,7 @@ export default function Page() {
 
     setLoading(true);
     setError(null);
-    setAnswer(null);
+    setResponse(null);
 
     try {
       const res = await fetch('http://localhost:8000/query-laws', {
@@ -31,8 +42,7 @@ export default function Page() {
       }
 
       const data = await res.json();
-      // Adjust this if your API response shape is different
-      setAnswer(data.answer ?? JSON.stringify(data, null, 2));
+      setResponse(data);
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong');
     } finally {
@@ -74,15 +84,46 @@ export default function Page() {
           </p>
         )}
 
-        {answer && (
-          <section className="rounded-md border border-gray-200 bg-white p-4 text-sm shadow-sm">
-            <h2 className="mb-2 text-base font-semibold text-gray-900">
-              Answer
-            </h2>
-            <pre className="whitespace-pre-wrap break-words text-gray-800">
-              {answer}
-            </pre>
-          </section>
+        {response && (
+          <>
+            <section className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+              <h2 className="mb-3 text-lg font-semibold text-gray-900">
+                Query
+              </h2>
+              <p className="mb-4 text-gray-800">
+                {response.query}
+              </p>
+              <h2 className="mb-3 text-lg font-semibold text-gray-900">
+                Response
+              </h2>
+              <p className="whitespace-pre-wrap break-words text-gray-800">
+                {response.response}
+              </p>
+            </section>
+
+            {response.citations && response.citations.length > 0 && (
+              <section className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                Citations ({response.citations.length})
+              </h2>
+              <div className="flex flex-col gap-4">
+                {response.citations.map((citation, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded border border-gray-100 bg-gray-50 p-3"
+                  >
+                    <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                      {citation.source}
+                    </h3>
+                    <p className="whitespace-pre-wrap break-words text-sm text-gray-600">
+                      {citation.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+            )}
+          </>
         )}
       </main>
     </div>
