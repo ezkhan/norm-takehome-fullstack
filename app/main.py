@@ -1,8 +1,18 @@
 # import uvicorn
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 from app.utils import Output, QdrantService, DocumentService
+from app.schemas import QueryLawsRequest
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 """
 Please create an endpoint that accepts a query string, e.g., "what happens if I steal 
@@ -31,9 +41,9 @@ def get_hello():
 
 
 @app.post("/query-laws")
-def query_laws(inquiry: str):
+def query_laws(payload: QueryLawsRequest):
     service = get_qdrant_service()
-    result = service.query(inquiry)
+    result = service.query(payload.inquiry)
     return result
 
 

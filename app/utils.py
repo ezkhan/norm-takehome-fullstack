@@ -20,7 +20,7 @@ from pypdf import PdfReader
 
 # key = os.environ['OPENAI_API_KEY']
 # openai.api_key = os.environ["OPENAI_API_KEY"]
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "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"
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 
